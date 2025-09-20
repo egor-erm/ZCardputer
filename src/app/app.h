@@ -80,3 +80,51 @@ public:
     TamagotchiApp();
     String getAppName();
 };
+
+namespace lgfx {
+namespace v1 {
+
+template<>
+struct DataWrapperT<fs::SDFS> : public DataWrapper {
+    fs::SDFS* _fs;
+    fs::File _file;
+    
+    DataWrapperT(fs::SDFS* fs) : _fs(fs), _file() {}
+    
+    virtual ~DataWrapperT() { close(); }
+    
+    virtual int read(uint8_t* buf, uint32_t len) override {
+        if (!_file) return 0;
+        return _file.read(buf, len);
+    }
+    
+    virtual void skip(int32_t offset) override {
+        if (!_file) return;
+        _file.seek(_file.position() + offset);
+    }
+    
+    virtual bool seek(uint32_t offset) override {
+        if (!_file) return false;
+        return _file.seek(offset);
+    }
+    
+    virtual void close() override {
+        if (_file) {
+            _file.close();
+        }
+    }
+    
+    virtual int32_t tell() override {
+        if (!_file) return -1;
+        return _file.position();
+    }
+    
+    bool open(const char* path) {
+        close();
+        _file = _fs->open(path, "r");
+        return _file;
+    }
+};
+
+} // namespace v1
+} // namespace lgfx

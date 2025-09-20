@@ -1,8 +1,5 @@
 #include "app/app.h"
 
-#include <SPI.h>
-#include <SD.h>
-
 #define SD_SPI_SCK_PIN  40
 #define SD_SPI_MISO_PIN 39
 #define SD_SPI_MOSI_PIN 14
@@ -55,6 +52,12 @@ void setup() {
     M5Cardputer.Display.println("SD card failed!");
     while (1)
       ;
+  }
+
+  if (SD.exists("/boot.png")) {
+    if (M5Cardputer.Display.drawPngFile(SD, "/boot.png")) {
+      delay(3000);
+    }
   }
     
   apps[0] = new RecorderApp();
