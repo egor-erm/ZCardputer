@@ -19,6 +19,31 @@ i2s_pin_config_t pin_config = {
     .data_in_num = 46,
 };
 
+struct __attribute__((packed)) wav_header_t
+{
+  char RIFF[4];
+  uint32_t chunk_size;
+  char WAVEfmt[8];
+  uint32_t fmt_chunk_size;
+  uint16_t audiofmt;
+  uint16_t channel;
+  uint32_t sample_rate;
+  uint32_t byte_per_sec;
+  uint16_t block_size;
+  uint16_t bit_per_sample;
+};
+
+struct __attribute__((packed)) sub_chunk_t
+{
+  char identifier[4];
+  uint32_t chunk_size;
+  uint8_t data[1];
+};
+
+String RecorderApp::getAppName() {
+    return "Recorder";
+}
+
 void RecorderApp::writeString(File &file, const char *str) {
     file.write((const uint8_t*)str, strlen(str));
 }
@@ -83,19 +108,58 @@ void RecorderApp::flushBuffer() {
 }
 
 void RecorderApp::playWavFromSD(const char* filename) {
+    File file = SD.open(filename);
+    if (!file) return;
 
-}
+    wav_header_t wav_header;
+    file.read((uint8_t*)&wav_header, sizeof(wav_header_t));
 
-RecorderApp::RecorderApp() {
-    
-}
+    if ( memcmp(wav_header.RIFF,    "RIFF",     4)
+    || memcmp(wav_header.WAVEfmt, "WAVEfmt ", 8)
+    || wav_header.audiofmt != 1
+    || wav_header.bit_per_sample < 8
+    || wav_header.bit_per_sample > 16
+    || wav_header.channel == 0
+    || wav_header.channel > 2) {
+        file.close();
+        return;
+    }
 
-RecorderApp::~RecorderApp() {
-    
-}
+    file.seek(offsetof(wav_header_t, audiofmt) + wav_header.fmt_chunk_size);
+    sub_chunk_t sub_chunk;
 
-String RecorderApp::getAppName() {
-    return "Recorder";
+    file.read((uint8_t*)&sub_chunk, 8);
+
+    while(memcmp(sub_chunk.identifier, "data", 4)) {
+        if (!file.seek(sub_chunk.chunk_size, SeekMode::SeekCur)) break;
+
+        file.read((uint8_t*)&sub_chunk, 8);
+    }
+
+    if (memcmp(sub_chunk.identifier, "data", 4)) {
+        file.close();
+        return;
+    }
+
+    uint8_t wav_data[BUFFER_SIZE];
+    int32_t data_len = sub_chunk.chunk_size;
+    bool flg_16bit = (wav_header.bit_per_sample >> 4);
+
+    drawUI();
+    while (data_len > 0) {
+        size_t len = data_len < BUFFER_SIZE ? data_len : BUFFER_SIZE;
+        len = file.read(wav_data, len);
+        data_len -= len;
+
+        if (flg_16bit) {
+            M5Cardputer.Speaker.playRaw((const int16_t*)wav_data, len >> 1, wav_header.sample_rate, wav_header.channel > 1, 1, 0);
+        } else {
+            M5Cardputer.Speaker.playRaw((const uint8_t*)wav_data, len, wav_header.sample_rate, wav_header.channel > 1, 1, 0);
+        }
+    }
+
+    file.close();
+    stopPlayback();
 }
 
 void RecorderApp::startRecording() {
@@ -196,11 +260,6 @@ void RecorderApp::update() {
         }
     }
 
-    // Проверяем статус воспроизведения
-    if (isPlaying && !M5Cardputer.Speaker.isPlaying()) {
-        stopPlayback();
-    }
-
     // Перерисовываем интерфейс если нужно
     if (needRedraw) {
         drawUI();
@@ -222,7 +281,6 @@ void RecorderApp::drawUI() {
         M5Cardputer.Display.setTextColor(GREEN);
         M5Cardputer.Display.println("PLAYING");
         M5Cardputer.Display.printf("File: %s\n", currentFilename.c_str());
-        M5Cardputer.Display.printf("Time: %ds\n", (millis() - playStartTime) / 1000);
     } else {
         M5Cardputer.Display.setTextColor(WHITE);
         M5Cardputer.Display.println("DICTAPHONE");
@@ -239,22 +297,22 @@ void RecorderApp::drawUI() {
 void RecorderApp::handleInput() {
     if (!M5Cardputer.Keyboard.isPressed()) return;
 
-    if (M5Cardputer.Keyboard.isKeyPressed('a')) {
+    if (M5Cardputer.Keyboard.isKeyPressed('a') && !isPlaying) {
         if (isRecording) {
             stopRecording();
-        } else if (isPlaying) {
-            stopPlayback();
         } else {
             startRecording();
         }
-    } else if (M5Cardputer.Keyboard.isKeyPressed('b')) {
-        if (!isRecording && currentFilename != "") {
-            if (isPlaying) {
-                stopPlayback();
-            } else {
-                playRecording();
-            }
+
+        delay(300);
+    } else if (M5Cardputer.Keyboard.isKeyPressed('b') && !isRecording && currentFilename != "") {
+        if (isPlaying) {
+            stopPlayback();
+        } else {
+            playRecording();
         }
+
+        delay(300);
     }
 
     delay(500);
@@ -268,4 +326,12 @@ void RecorderApp::start() {
 void RecorderApp::exit() {
     if (isRecording) stopRecording();
     if (isPlaying) stopPlayback();
+}
+
+RecorderApp::RecorderApp() {
+    
+}
+
+RecorderApp::~RecorderApp() {
+    
 }
