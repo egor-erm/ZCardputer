@@ -145,6 +145,8 @@ void RecorderApp::playWavFromSD(const char* filename) {
     int32_t data_len = sub_chunk.chunk_size;
     bool flg_16bit = (wav_header.bit_per_sample >> 4);
 
+    M5Cardputer.Speaker.setVolume((uint8_t) 255);
+
     drawUI();
     while (data_len > 0) {
         size_t len = data_len < BUFFER_SIZE ? data_len : BUFFER_SIZE;
