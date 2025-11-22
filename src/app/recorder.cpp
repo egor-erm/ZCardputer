@@ -1,8 +1,29 @@
 #include "app.h"
 
-// Используем официальный API микрофона — I2S больше не нужен
-static constexpr size_t MIC_BUFFER_SIZE = 512; // размер буфера для одного вызова record()
+// Используем официальный API микрофона
+static constexpr size_t MIC_BUFFER_SIZE = 256; // размер буфера для одного вызова record()
 static int16_t micReadBuffer[MIC_BUFFER_SIZE];
+
+struct __attribute__((packed)) wav_header_t
+{
+  char RIFF[4];
+  uint32_t chunk_size;
+  char WAVEfmt[8];
+  uint32_t fmt_chunk_size;
+  uint16_t audiofmt;
+  uint16_t channel;
+  uint32_t sample_rate;
+  uint32_t byte_per_sec;
+  uint16_t block_size;
+  uint16_t bit_per_sample;
+};
+
+struct __attribute__((packed)) sub_chunk_t
+{
+  char identifier[4];
+  uint32_t chunk_size;
+  uint8_t data[1];
+};
 
 String RecorderApp::getAppName() {
     return "Recorder";
@@ -68,45 +89,28 @@ void RecorderApp::playWavFromSD(const char* filename) {
     File file = SD.open(filename);
     if (!file) return;
 
-    struct __attribute__((packed)) wav_header_t {
-        char RIFF[4];
-        uint32_t chunk_size;
-        char WAVEfmt[8];
-        uint32_t fmt_chunk_size;
-        uint16_t audiofmt;
-        uint16_t channel;
-        uint32_t sample_rate;
-        uint32_t byte_per_sec;
-        uint16_t block_size;
-        uint16_t bit_per_sample;
-    };
-
-    struct __attribute__((packed)) sub_chunk_t {
-        char identifier[4];
-        uint32_t chunk_size;
-        uint8_t data[1];
-    };
-
     wav_header_t wav_header;
-    file.read((uint8_t*)&wav_header, sizeof(wav_header));
+    file.read((uint8_t*)&wav_header, sizeof(wav_header_t));
 
-    if (memcmp(wav_header.RIFF, "RIFF", 4) ||
-        memcmp(wav_header.WAVEfmt, "WAVEfmt ", 8) ||
-        wav_header.audiofmt != 1 ||
-        wav_header.bit_per_sample < 8 ||
-        wav_header.bit_per_sample > 16 ||
-        wav_header.channel == 0 ||
-        wav_header.channel > 2) {
+    if ( memcmp(wav_header.RIFF,    "RIFF",     4)
+    || memcmp(wav_header.WAVEfmt, "WAVEfmt ", 8)
+    || wav_header.audiofmt != 1
+    || wav_header.bit_per_sample < 8
+    || wav_header.bit_per_sample > 16
+    || wav_header.channel == 0
+    || wav_header.channel > 2) {
         file.close();
         return;
     }
 
     file.seek(offsetof(wav_header_t, audiofmt) + wav_header.fmt_chunk_size);
     sub_chunk_t sub_chunk;
+
     file.read((uint8_t*)&sub_chunk, 8);
 
-    while (memcmp(sub_chunk.identifier, "data", 4)) {
-        if (!file.seek(sub_chunk.chunk_size, SeekCur)) break;
+    while(memcmp(sub_chunk.identifier, "data", 4)) {
+        if (!file.seek(sub_chunk.chunk_size, SeekMode::SeekCur)) break;
+
         file.read((uint8_t*)&sub_chunk, 8);
     }
 
@@ -115,45 +119,27 @@ void RecorderApp::playWavFromSD(const char* filename) {
         return;
     }
 
-    // Отключаем микрофон и включаем динамик
-    if (M5Cardputer.Mic.isEnabled()) {
-        M5Cardputer.Mic.end();
-    }
-    M5Cardputer.Speaker.begin();
-    M5Cardputer.Speaker.setVolume(255);
-
-    drawUI(); // Обновляем интерфейс: "PLAYING"
-
     uint8_t wav_data[BUFFER_SIZE];
     int32_t data_len = sub_chunk.chunk_size;
-    bool flg_16bit = (wav_header.bit_per_sample == 16);
+    bool flg_16bit = (wav_header.bit_per_sample >> 4);
 
-    // Стримим данные без ожидания
-    while (data_len > 0 && isPlaying) {
-        // Проверяем ввод (остановка по 'B')
-        M5Cardputer.update();
-        if (M5Cardputer.Keyboard.isKeyPressed('b')) {
-            isPlaying = false;
-            break;
-        }
+    M5Cardputer.Speaker.setVolume((uint8_t) 250);
 
-        size_t len = (data_len < (int32_t)BUFFER_SIZE) ? data_len : BUFFER_SIZE;
+    drawUI();
+    while (data_len > 0) {
+        size_t len = data_len < BUFFER_SIZE ? data_len : BUFFER_SIZE;
         len = file.read(wav_data, len);
-        if (len == 0) break;
         data_len -= len;
 
         if (flg_16bit) {
-            M5Cardputer.Speaker.playRaw((const int16_t*)wav_data, len / 2, wav_header.sample_rate, wav_header.channel > 1, 1, 0);
+            M5Cardputer.Speaker.playRaw((const int16_t*)wav_data, len >> 1, wav_header.sample_rate, wav_header.channel > 1, 1, 0);
         } else {
             M5Cardputer.Speaker.playRaw((const uint8_t*)wav_data, len, wav_header.sample_rate, wav_header.channel > 1, 1, 0);
         }
-
-        // Небольшая задержка, чтобы не перегружать очередь динамика
-        delay(1);
     }
 
     file.close();
-    stopPlayback(); // Это вернёт микрофон, если нужно
+    stopPlayback();
 }
 
 void RecorderApp::startRecording() {
@@ -163,6 +149,7 @@ void RecorderApp::startRecording() {
     if (M5Cardputer.Speaker.isEnabled()) {
         M5Cardputer.Speaker.end();
     }
+
     M5Cardputer.Mic.begin();
 
     currentFilename = getNextFilename();
@@ -202,6 +189,7 @@ void RecorderApp::stopRecording() {
 
 void RecorderApp::playRecording() {
     if (isRecording || isPlaying || currentFilename == "") return;
+
     isPlaying = true;
     playWavFromSD(currentFilename.c_str());
     needRedraw = true;
@@ -209,12 +197,9 @@ void RecorderApp::playRecording() {
 
 void RecorderApp::stopPlayback() {
     if (!isPlaying) return;
+
     isPlaying = false;
     M5Cardputer.Speaker.stop();
-    
-    if (!isRecording) {
-        M5Cardputer.Mic.begin();
-    }
     needRedraw = true;
 }
 
@@ -236,7 +221,6 @@ void RecorderApp::update() {
                 }
                 audioBuffer[bufferIndex++] = micReadBuffer[i];
             }
-
             
             if (millis() - recordStartTime > RECORD_TIME * 1000) {
                 stopRecording();
@@ -268,7 +252,7 @@ void RecorderApp::drawUI() {
         M5Cardputer.Display.setTextColor(WHITE);
         M5Cardputer.Display.println("DICTAPHONE");
         M5Cardputer.Display.println("A - Record/Stop");
-        M5Cardputer.Display.println("B - Play/Stop");
+        M5Cardputer.Display.println("B - Play");
         M5Cardputer.Display.println("Exit - ESC");
 
         if (currentFilename != "") {
@@ -286,6 +270,7 @@ void RecorderApp::handleInput() {
         } else {
             startRecording();
         }
+
         delay(300);
     } else if (M5Cardputer.Keyboard.isKeyPressed('b') && !isRecording && currentFilename != "") {
         if (isPlaying) {
@@ -293,8 +278,11 @@ void RecorderApp::handleInput() {
         } else {
             playRecording();
         }
+        
         delay(300);
     }
+
+    delay(500);
 }
 
 void RecorderApp::start() {

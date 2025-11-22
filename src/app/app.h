@@ -3,9 +3,9 @@
 #include <SPI.h>
 
 // AUDIO SETTINGS
-#define SAMPLE_RATE 16000  // Используем ту же частоту, что и в рабочем примере
+#define SAMPLE_RATE 17000  // Используем ту же частоту, что и в рабочем примере
 #define RECORD_TIME 60
-#define BUFFER_SIZE 1024   // Увеличим буфер для лучшей производительности
+#define BUFFER_SIZE 1024
 #define FILENAME_PREFIX "/note"
 #define FILENAME_EXT ".wav"
 
