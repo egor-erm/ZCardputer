@@ -1,36 +1,14 @@
-/**
- * @file keyboard.h
- * @author Forairaaaaa
- * @brief
- * @version 0.1
- * @date 2023-09-22
+/*
+ * SPDX-FileCopyrightText: 2025 M5Stack Technology CO LTD
  *
- * @copyright Copyright (c) 2023
- *
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
-#include <iostream>
-#include <vector>
-#include "Arduino.h"
+#include "KeyboardReader/KeyboardReader.h"
 #include "Keyboard_def.h"
-
-struct Chart_t {
-    uint8_t value;
-    uint8_t x_1;
-    uint8_t x_2;
-};
-
-struct Point2D_t {
-    int x;
-    int y;
-};
-
-const std::vector<int> output_list = {8, 9, 11};
-const std::vector<int> input_list  = {13, 15, 3, 4, 5, 6, 7};
-
-const Chart_t X_map_chart[7] = {{1, 0, 1},   {2, 2, 3},  {4, 4, 5},
-                                {8, 6, 7},   {16, 8, 9}, {32, 10, 11},
-                                {64, 12, 13}};
+#include <Arduino.h>
+#include <vector>
+#include <memory>
 
 struct KeyValue_t {
     const char value_first;
@@ -95,7 +73,7 @@ const KeyValue_t _key_value_map[4][14] = {{{'`', '~'},
                                            {' ', ' '}}};
 
 class Keyboard_Class {
-   public:
+public:
     struct KeysState {
         bool tab          = false;
         bool fn           = false;
@@ -112,7 +90,8 @@ class Keyboard_Class {
         std::vector<uint8_t> hid_keys;
         std::vector<uint8_t> modifier_keys;
 
-        void reset() {
+        void reset()
+        {
             tab       = false;
             fn        = false;
             shift     = false;
@@ -129,32 +108,26 @@ class Keyboard_Class {
         }
     };
 
-   private:
-    std::vector<Point2D_t> _key_list_buffer;
-    std::vector<Point2D_t> _key_pos_print_keys;  // only text: eg A,B,C
-    std::vector<Point2D_t> _key_pos_hid_keys;  // print key + space, enter, del
-    std::vector<Point2D_t>
-        _key_pos_modifier_keys;  // modifier key: eg shift, ctrl, alt
-    KeysState _keys_state_buffer;
-    bool _is_caps_locked;
-    uint8_t _last_key_size;
-
-    void _set_output(const std::vector<int>& pinList, uint8_t output);
-    uint8_t _get_input(const std::vector<int>& pinList);
-
-   public:
-    Keyboard_Class() : _is_caps_locked(false) {
+    Keyboard_Class() : _is_caps_locked(false)
+    {
     }
 
     void begin();
+    void begin(std::unique_ptr<KeyboardReader> reader);
     uint8_t getKey(Point2D_t keyCoor);
 
     void updateKeyList();
-    inline std::vector<Point2D_t>& keyList() {
-        return _key_list_buffer;
+    inline const std::vector<Point2D_t>& keyList()
+    {
+        if (_keyboard_reader) {
+            return _keyboard_reader->keyList();
+        }
+        static const std::vector<Point2D_t> empty_list;
+        return empty_list;
     }
 
-    inline KeyValue_t getKeyValue(const Point2D_t& keyCoor) {
+    inline KeyValue_t getKeyValue(const Point2D_t& keyCoor)
+    {
         return _key_value_map[keyCoor.y][keyCoor.x];
     }
 
@@ -163,14 +136,26 @@ class Keyboard_Class {
     bool isKeyPressed(char c);
 
     void updateKeysState();
-    inline KeysState& keysState() {
+    inline KeysState& keysState()
+    {
         return _keys_state_buffer;
     }
 
-    inline bool capslocked(void) {
+    inline bool capslocked(void)
+    {
         return _is_caps_locked;
     }
-    inline void setCapsLocked(bool isLocked) {
+    inline void setCapsLocked(bool isLocked)
+    {
         _is_caps_locked = isLocked;
     }
+
+private:
+    std::unique_ptr<KeyboardReader> _keyboard_reader;
+    std::vector<Point2D_t> _key_pos_print_keys;     // only text: eg A,B,C
+    std::vector<Point2D_t> _key_pos_hid_keys;       // print key + space, enter, del
+    std::vector<Point2D_t> _key_pos_modifier_keys;  // modifier key: eg shift, ctrl, alt
+    KeysState _keys_state_buffer;
+    bool _is_caps_locked;
+    uint8_t _last_key_size;
 };

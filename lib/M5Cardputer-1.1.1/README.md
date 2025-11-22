@@ -1,7 +1,7 @@
 
 # M5Cardputer
 
-## Basic library for M5Stack M5Cardputer Board 
+## Basic library for M5Stack M5Cardputer and M5Cardputer-ADV Board 
 
 
 License

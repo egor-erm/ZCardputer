@@ -1,7 +1,7 @@
 {
   "name": "M5Cardputer",
-  "description": "Library for M5Stack M5Cardputer Board",
-  "keywords": "M5GFX,M5Stack,M5Cardputer",
+  "description": "Library for M5Stack M5Cardputer and M5Cardputer-ADV Board",
+  "keywords": "M5GFX,M5Stack,M5Cardputer,M5Cardputer-ADV",
   "authors": {
     "name": "M5Stack, Sean",
     "url": "http://www.m5stack.com"
@@ -10,7 +10,7 @@
     "type": "git",
     "url": "https://github.com/m5stack/M5Cardputer.git"
   },
-  "version": "1.0.3",
+  "version": "1.1.1",
   "frameworks": [
     "arduino"
   ],

@@ -1,5 +1,12 @@
+/*
+ * SPDX-FileCopyrightText: 2025 M5Stack Technology CO LTD
+ *
+ * SPDX-License-Identifier: MIT
+ */
 #ifndef M5CARDPUTER_KB_KEYS_DEF_H
 #define M5CARDPUTER_KB_KEYS_DEF_H
+
+#include <cstdint>
 
 #define SHIFT 0x80
 
@@ -7,8 +14,8 @@
 #define KEY_LEFT_SHIFT 0x81
 #define KEY_LEFT_ALT   0x82
 
-#define KEY_FN         0xff
-#define KEY_OPT         0x00
+#define KEY_FN  0xff
+#define KEY_OPT 0x00
 
 #define KEY_BACKSPACE 0x2a
 #define KEY_TAB       0x2b
