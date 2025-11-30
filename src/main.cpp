@@ -7,7 +7,8 @@
 #define SD_SPI_CS_PIN   12
 
 #define MAX_APPS 5
-const lgfx::U8g2font FontRUS = { lgfx_font_rus };
+const lgfx::U8g2font FontRUS1 = { lgfx_font_rus_5x7 };
+const lgfx::U8g2font FontRUS2 = { lgfx_font_rus_6x12 };
 
 int currentAppIndex = 0;
 
@@ -62,7 +63,7 @@ void setup() {
     }
   }
 
-  M5Cardputer.Display.setFont(&FontRUS);
+  M5Cardputer.Display.setFont(&FontRUS2);
 
   apps[0] = new RecorderApp();
   apps[1] = new WifiApp();
