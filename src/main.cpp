@@ -21,10 +21,29 @@ void drawMainMenu() {
   M5Cardputer.Display.setTextColor(GREEN);
   
   M5Cardputer.Display.clear();
-  M5Cardputer.Display.setCursor(5, 5);
-
-  for (int i = 0; i < MAX_APPS; i++) {
-    M5Cardputer.Display.println((i == currentAppIndex ? "> " : " ") + apps[i]->getAppName());
+  
+  int centerY = M5Cardputer.Display.height() / 2;
+  int lineHeight = 20; // Высота строки
+  int visibleItems = 5; // Количество видимых элементов
+  
+  // Рассчитываем смещение для плавного скроллинга
+  int startIndex = max(0, min(currentAppIndex - visibleItems / 2, MAX_APPS - visibleItems));
+  
+  for (int i = 0; i < visibleItems; i++) {
+    int appIndex = startIndex + i;
+    if (appIndex >= 0 && appIndex < MAX_APPS) {
+      int yPos = centerY - (lineHeight / 2) + (i - (currentAppIndex - startIndex)) * lineHeight;
+      
+      M5Cardputer.Display.setCursor(5, yPos);
+      
+      if (appIndex == currentAppIndex) {
+        M5Cardputer.Display.print("> ");
+      } else {
+        M5Cardputer.Display.print("  ");
+      }
+      
+      M5Cardputer.Display.println(apps[appIndex]->getAppName());
+    }
   }
 }
 
@@ -32,10 +51,10 @@ void handleInput() {
   if (!M5Cardputer.Keyboard.isPressed()) return;
 
   if (M5Cardputer.Keyboard.isKeyPressed(';')) { // вверх
-    currentAppIndex = (currentAppIndex == 0) ? MAX_APPS - 1 : currentAppIndex-1;
+    currentAppIndex = (currentAppIndex == 0) ? MAX_APPS - 1 : currentAppIndex - 1;
     drawMainMenu();
   } else if (M5Cardputer.Keyboard.isKeyPressed('.')) { // вниз
-    currentAppIndex = (currentAppIndex == MAX_APPS - 1) ? 0 : currentAppIndex+1;
+    currentAppIndex = (currentAppIndex == MAX_APPS - 1) ? 0 : currentAppIndex + 1;
     drawMainMenu();
   } else if (M5Cardputer.Keyboard.isKeyPressed(KEY_ENTER)) { // выбрать
     activeApp = apps[currentAppIndex];
