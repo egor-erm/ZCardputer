@@ -26,7 +26,7 @@ struct __attribute__((packed)) sub_chunk_t
 };
 
 String RecorderApp::getAppName() {
-    return "Recorder";
+    return "Диктофон";
 }
 
 void RecorderApp::writeString(File &file, const char *str) {
@@ -240,23 +240,23 @@ void RecorderApp::drawUI() {
 
     if (isRecording) {
         M5Cardputer.Display.setTextColor(RED);
-        M5Cardputer.Display.println("RECORDING");
-        M5Cardputer.Display.printf("Time: %ds\n", (millis() - recordStartTime) / 1000);
-        M5Cardputer.Display.printf("File: %s\n", currentFilename.c_str());
-        M5Cardputer.Display.printf("Size: %d KB\n", data_size / 1024);
+        M5Cardputer.Display.println("ЗАПИСЬ");
+        M5Cardputer.Display.printf("Время: %ds\n", (millis() - recordStartTime) / 1000);
+        M5Cardputer.Display.printf("Файл: %s\n", currentFilename.c_str());
+        M5Cardputer.Display.printf("Размер: %d KB\n", data_size / 1024);
     } else if (isPlaying) {
         M5Cardputer.Display.setTextColor(GREEN);
-        M5Cardputer.Display.println("PLAYING");
-        M5Cardputer.Display.printf("File: %s\n", currentFilename.c_str());
+        M5Cardputer.Display.println("ПРОСЛУШИВАНИЕ");
+        M5Cardputer.Display.printf("Файл: %s\n", currentFilename.c_str());
     } else {
         M5Cardputer.Display.setTextColor(WHITE);
-        M5Cardputer.Display.println("DICTAPHONE");
-        M5Cardputer.Display.println("A - Record/Stop");
-        M5Cardputer.Display.println("B - Play");
-        M5Cardputer.Display.println("Exit - ESC");
+        M5Cardputer.Display.println("Диктофон");
+        M5Cardputer.Display.println("A - Запись/Стоп");
+        M5Cardputer.Display.println("B - Прослушать");
+        M5Cardputer.Display.println("Выход - ESC");
 
         if (currentFilename != "") {
-            M5Cardputer.Display.printf("Last: %s\n", currentFilename.c_str());
+            M5Cardputer.Display.printf("Последняя: %s\n", currentFilename.c_str());
         }
     }
 }

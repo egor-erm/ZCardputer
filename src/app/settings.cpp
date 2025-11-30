@@ -5,5 +5,5 @@ SettingsApp::SettingsApp() {
 }
 
 String SettingsApp::getAppName() {
-    return "Settings";
+    return "Настройки";
 }

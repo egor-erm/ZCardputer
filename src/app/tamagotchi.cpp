@@ -5,5 +5,5 @@ TamagotchiApp::TamagotchiApp() {
 }
 
 String TamagotchiApp::getAppName() {
-    return "Tamagotchi";
+    return "Тамагочи";
 }

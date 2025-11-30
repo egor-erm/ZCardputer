@@ -5,5 +5,5 @@ MusicApp::MusicApp() {
 }
 
 String MusicApp::getAppName() {
-    return "Music";
+    return "Музыка";
 }

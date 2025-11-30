@@ -1,4 +1,5 @@
 #include "app/app.h"
+#include "font/rus.h"
 
 #define SD_SPI_SCK_PIN  40
 #define SD_SPI_MISO_PIN 39
@@ -6,6 +7,7 @@
 #define SD_SPI_CS_PIN   12
 
 #define MAX_APPS 5
+const lgfx::U8g2font FontRUS = { lgfx_font_rus };
 
 int currentAppIndex = 0;
 
@@ -59,7 +61,9 @@ void setup() {
       delay(3000);
     }
   }
-    
+
+  M5Cardputer.Display.setFont(&FontRUS);
+
   apps[0] = new RecorderApp();
   apps[1] = new WifiApp();
   apps[2] = new MusicApp();
