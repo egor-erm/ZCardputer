@@ -1,0 +1,19 @@
+// Альтернативный индикатор уровня заряда батареи
+void drawBatteryMinimal() {
+  int batteryLevel = M5Cardputer.Power.getBatteryLevel();
+  
+  int width = 20;
+  int height = 8;
+  int x = M5Cardputer.Display.width() - width - 5;
+  int y = 5;
+  
+  // Контур батареи
+  M5Cardputer.Display.drawRect(x, y, width, height, GREEN);
+  M5Cardputer.Display.fillRect(x + width, y + 2, 1, height - 4, GREEN);
+  
+  // Уровень заряда
+  int fillWidth = (width - 2) * batteryLevel / 100;
+  if (fillWidth > 0) {
+    M5Cardputer.Display.fillRect(x + 1, y + 1, fillWidth, height - 2, GREEN);
+  }
+}

@@ -15,6 +15,26 @@ int currentAppIndex = 0;
 App *activeApp = NULL;
 App *apps[MAX_APPS];
 
+void drawBatteryBarMinimal() {
+  int batteryLevel = M5Cardputer.Power.getBatteryLevel();
+  
+  int barWidth = 1;
+  int barHeight = M5Cardputer.Display.height(); // На всю высоту экрана
+  int x = M5Cardputer.Display.width() - 1; // Самый правый пиксель
+  
+  // Заполненная часть
+  int filledHeight = (barHeight * batteryLevel) / 100;
+  if (filledHeight > 0) {
+    uint16_t color;
+    if (batteryLevel > 70) color = GREEN;
+    else if (batteryLevel > 30) color = YELLOW;
+    else color = RED;
+    
+    int fillY = barHeight - filledHeight; // Снизу вверх
+    M5Cardputer.Display.drawFastVLine(x, fillY, filledHeight, color);
+  }
+}
+
 void drawMainMenu() {
   M5Cardputer.Display.setRotation(1);
   M5Cardputer.Display.setTextSize(2);
@@ -26,7 +46,6 @@ void drawMainMenu() {
   int lineHeight = 20; // Высота строки
   int visibleItems = 5; // Количество видимых элементов
   
-  // Рассчитываем смещение для плавного скроллинга
   int startIndex = max(0, min(currentAppIndex - visibleItems / 2, MAX_APPS - visibleItems));
   
   for (int i = 0; i < visibleItems; i++) {
@@ -45,6 +64,8 @@ void drawMainMenu() {
       M5Cardputer.Display.println(apps[appIndex]->getAppName());
     }
   }
+
+  drawBatteryBarMinimal();
 }
 
 void handleInput() {
