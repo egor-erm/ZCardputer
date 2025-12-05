@@ -1,19 +1,111 @@
 #include "app/app.h"
 #include "font/rus.h"
+#include "module/sim.h"
+#include "module/sleep.h"
 
-#define SD_SPI_SCK_PIN  40
+#define SD_SPI_SCK_PIN 40
 #define SD_SPI_MISO_PIN 39
 #define SD_SPI_MOSI_PIN 14
-#define SD_SPI_CS_PIN   12
+#define SD_SPI_CS_PIN 12
 
-#define MAX_APPS 5
 const lgfx::U8g2font FontRUS1 = { lgfx_font_rus_5x7 };
 const lgfx::U8g2font FontRUS2 = { lgfx_font_rus_6x12 };
 
+SimModule simModule;
+SleepManager sleepManager(&simModule);
+
+#define MAX_APPS 7
+
 int currentAppIndex = 0;
+int availableAppsCount = 0;
 
 App *activeApp = NULL;
 App *apps[MAX_APPS];
+
+void initApps(bool);
+void periodicUpdates();
+void drawBatteryBarMinimal();
+void drawMainMenu();
+void handleInput();
+
+void setup() {
+  auto cfg = M5.config();
+  M5Cardputer.begin(cfg);
+  Serial.begin(115200);
+
+  SPI.begin(SD_SPI_SCK_PIN, SD_SPI_MISO_PIN, SD_SPI_MOSI_PIN, SD_SPI_CS_PIN);
+
+  if (!SD.begin(SD_SPI_CS_PIN, SPI, 25000000)) {
+    M5Cardputer.Display.println("SD card failed!");
+    while (1)
+      ;
+  }
+
+  M5Cardputer.Display.setFont(&FontRUS2);
+  if (SD.exists("/boot.png")) {
+    M5Cardputer.Display.drawPngFile(SD, "/boot.png");
+  }
+
+  initApps(simModule.begin());
+
+  sleepManager.updateActivity();
+
+  drawMainMenu();
+}
+
+void loop() {
+  M5Cardputer.update();
+
+  sleepManager.update();
+  if (sleepManager.isDeviceSleeping()) {
+    return;
+  }
+
+  periodicUpdates();
+
+  if (activeApp != NULL) {
+    activeApp->update();
+    sleepManager.updateActivity();
+        
+    if (M5Cardputer.Keyboard.isKeyPressed('`')) {
+      activeApp->exit();
+      activeApp = NULL;
+      drawMainMenu();
+      sleepManager.updateActivity();
+    }
+  } else handleInput();
+}
+
+void initApps(bool simAvailable) {
+    availableAppsCount = 0;
+    
+    apps[availableAppsCount++] = new RecorderApp();
+    apps[availableAppsCount++] = new WifiApp();
+    apps[availableAppsCount++] = new MusicApp();
+    apps[availableAppsCount++] = new TamagotchiApp();
+    
+    if (simAvailable) {
+        //apps[availableAppsCount++] = new PhoneApp();
+        //apps[availableAppsCount++] = new SMSApp();
+    }
+    
+    apps[availableAppsCount++] = new SettingsApp();
+    
+    Serial.printf("Loaded %d apps, SIM: %s\n", 
+                  availableAppsCount, 
+                  simAvailable ? "YES" : "NO");
+}
+
+void periodicUpdates() {
+  static unsigned long lastSimUpdate = 0;
+  const unsigned long SIM_UPDATE_INTERVAL = 5000;  // 5 секунд
+  
+  // Обновляем SIM модуль раз в 5 секунд
+  if (millis() - lastSimUpdate > SIM_UPDATE_INTERVAL) {
+    simModule.update();
+    lastSimUpdate = millis();
+  }
+}
 
 void drawBatteryBarMinimal() {
   int batteryLevel = M5Cardputer.Power.getBatteryLevel();
@@ -46,11 +138,11 @@ void drawMainMenu() {
   int lineHeight = 20; // Высота строки
   int visibleItems = 5; // Количество видимых элементов
   
-  int startIndex = max(0, min(currentAppIndex - visibleItems / 2, MAX_APPS - visibleItems));
+  int startIndex = max(0, min(currentAppIndex - visibleItems / 2, availableAppsCount - visibleItems));
   
   for (int i = 0; i < visibleItems; i++) {
     int appIndex = startIndex + i;
-    if (appIndex >= 0 && appIndex < MAX_APPS) {
+    if (appIndex >= 0 && appIndex < availableAppsCount) {
       int yPos = centerY - (lineHeight / 2) + (i - (currentAppIndex - startIndex)) * lineHeight;
       
       M5Cardputer.Display.setCursor(5, yPos);
@@ -71,11 +163,13 @@ void drawMainMenu() {
 void handleInput() {
   if (!M5Cardputer.Keyboard.isPressed()) return;
 
+  sleepManager.updateActivity();
+
   if (M5Cardputer.Keyboard.isKeyPressed(';')) { // вверх
-    currentAppIndex = (currentAppIndex == 0) ? MAX_APPS - 1 : currentAppIndex - 1;
+    currentAppIndex = (currentAppIndex == 0) ? availableAppsCount - 1 : currentAppIndex - 1;
     drawMainMenu();
   } else if (M5Cardputer.Keyboard.isKeyPressed('.')) { // вниз
-    currentAppIndex = (currentAppIndex == MAX_APPS - 1) ? 0 : currentAppIndex + 1;
+    currentAppIndex = (currentAppIndex == availableAppsCount - 1) ? 0 : currentAppIndex + 1;
     drawMainMenu();
   } else if (M5Cardputer.Keyboard.isKeyPressed(KEY_ENTER)) { // выбрать
     activeApp = apps[currentAppIndex];
@@ -83,47 +177,4 @@ void handleInput() {
   }
 
   delay(200);
-}
-
-void setup() {
-  auto cfg = M5.config();
-  M5Cardputer.begin(cfg);
-
-  SPI.begin(SD_SPI_SCK_PIN, SD_SPI_MISO_PIN, SD_SPI_MOSI_PIN, SD_SPI_CS_PIN);
-
-  if (!SD.begin(SD_SPI_CS_PIN, SPI, 25000000)) {
-    M5Cardputer.Display.println("SD card failed!");
-    while (1)
-      ;
-  }
-
-  if (SD.exists("/boot.png")) {
-    if (M5Cardputer.Display.drawPngFile(SD, "/boot.png")) {
-      delay(3000);
-    }
-  }
-
-  M5Cardputer.Display.setFont(&FontRUS2);
-
-  apps[0] = new RecorderApp();
-  apps[1] = new WifiApp();
-  apps[2] = new MusicApp();
-  apps[3] = new TamagotchiApp();
-  apps[4] = new SettingsApp();
-
-  drawMainMenu();
-}
-
-void loop() {
-  M5Cardputer.update();
-
-  if (activeApp != NULL) {
-    activeApp->update();
-        
-    if (M5Cardputer.Keyboard.isKeyPressed('`')) {
-      activeApp->exit();
-      activeApp = NULL;
-      drawMainMenu();
-    }
-  } else handleInput();
 }
