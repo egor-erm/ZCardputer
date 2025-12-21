@@ -27,23 +27,13 @@ void SleepManager::updateWhileAwake() {
 }
 
 void SleepManager::updateInSleep() {
-    // 1. Проверяем SIM модуль на входящие звонки
-    if (simModule != nullptr && simModule->isDetected()) {
-        // Эта проверка ДОЛЖНА работать даже если SIM модуль спит
-        if (simModule->checkForCallOrSMS()) {
-            // Обнаружен входящий звонок или SMS - ПРОСЫПАЕМСЯ!
-            wakeUp();
-            return;
-        }
-    }
-    
-    // 2. Проверяем нажатие клавиш для пробуждения
+    // Проверяем нажатие клавиш для пробуждения
     if (M5Cardputer.Keyboard.isPressed()) {
         wakeUp();
         return;
     }
     
-    // 3. В режиме сна делаем небольшую задержку
+    // В режиме сна делаем небольшую задержку
     delay(100);
 }
 
@@ -75,9 +65,9 @@ void SleepManager::wakeUp() {
     // 1. Восстанавливаем частоту процессора
     setCpuFrequencyMhz(240);
     
-    // 2. БУДИМ SIM МОДУЛЬ
-    if (simModule != nullptr && simModule->isDetected()) {
-        simModule->wakeup();  // Будим SIM модуль
+    // 2. Включаем сеть
+    if (networkManager != nullptr) {
+        networkManager->wakeup();
     }
     
     // 3. Включаем SD карту

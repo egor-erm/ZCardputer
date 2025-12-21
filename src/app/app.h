@@ -1,6 +1,7 @@
 #include <M5Cardputer.h>
 #include <SD.h>
 #include <SPI.h>
+#include "module/network.h"
 
 // AUDIO SETTINGS
 #define SAMPLE_RATE 17000  // Используем ту же частоту, что и в рабочем примере
@@ -57,10 +58,19 @@ public:
     void exit();
 };
 
-class WifiApp : public App {
+class NetworkApp : public App {
+private:
+    NetworkManager* network;
+    bool needRedraw = true;
+    
 public:
-    WifiApp();
+    NetworkApp(NetworkManager* netManager);
     String getAppName();
+    void update();
+    void drawUI();
+    void handleInput();
+    void start();
+    void exit();
 };
 
 class MusicApp : public App {

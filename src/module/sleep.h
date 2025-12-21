@@ -2,12 +2,14 @@
 #define SLEEP_MANAGER_H
 
 #include <M5Cardputer.h>
+#include "network.h"
 
 // Предварительное объявление (чтобы не включать весь sim.h)
 class SimModule;
 
 class SleepManager {
 private:
+    NetworkManager* networkManager;
     SimModule* simModule;  // Указатель на SIM модуль
     unsigned long lastActivity = 0;
     unsigned long sleepTimeout = 30000; // 30 секунд
@@ -21,6 +23,8 @@ private:
 public:
     // Конструктор с передачей SIM модуля
     SleepManager(SimModule* sim = nullptr) : simModule(sim) {}
+    
+    SleepManager(NetworkManager* network = nullptr) : networkManager(network) {}
     
     void updateActivity() {
         lastActivity = millis();

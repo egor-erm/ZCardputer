@@ -2,6 +2,7 @@
 #include "font/rus.h"
 #include "module/sim.h"
 #include "module/sleep.h"
+#include "module/network.h"
 
 #define SD_SPI_SCK_PIN 40
 #define SD_SPI_MISO_PIN 39
@@ -12,7 +13,8 @@ const lgfx::U8g2font FontRUS1 = { lgfx_font_rus_5x7 };
 const lgfx::U8g2font FontRUS2 = { lgfx_font_rus_6x12 };
 
 SimModule simModule;
-SleepManager sleepManager(&simModule);
+NetworkManager networkManager(&simModule);
+SleepManager sleepManager(&networkManager);
 
 #define MAX_APPS 7
 
@@ -23,7 +25,7 @@ App *activeApp = NULL;
 App *apps[MAX_APPS];
 
 void initApps(bool);
-void periodicUpdates();
+void simUpdate();
 void drawBatteryBarMinimal();
 void drawMainMenu();
 void handleInput();
@@ -46,6 +48,12 @@ void setup() {
     M5Cardputer.Display.drawPngFile(SD, "/boot.png");
   }
 
+  networkManager.setPriority(PRIORITY_WIFI_FIRST);
+  networkManager.setWiFiCredentials("", "");
+  networkManager.enableSIM(true);
+
+  networkManager.connect();
+
   initApps(simModule.begin());
 
   sleepManager.updateActivity();
@@ -60,8 +68,6 @@ void loop() {
   if (sleepManager.isDeviceSleeping()) {
     return;
   }
-
-  periodicUpdates();
 
   if (activeApp != NULL) {
     activeApp->update();
@@ -80,12 +86,11 @@ void initApps(bool simAvailable) {
     availableAppsCount = 0;
     
     apps[availableAppsCount++] = new RecorderApp();
-    apps[availableAppsCount++] = new WifiApp();
+    apps[availableAppsCount++] = new NetworkApp(&networkManager);
     apps[availableAppsCount++] = new MusicApp();
     apps[availableAppsCount++] = new TamagotchiApp();
     
     if (simAvailable) {
-        //apps[availableAppsCount++] = new PhoneApp();
         //apps[availableAppsCount++] = new SMSApp();
     }
     
@@ -94,17 +99,6 @@ void initApps(bool simAvailable) {
     Serial.printf("Loaded %d apps, SIM: %s\n", 
                   availableAppsCount, 
                   simAvailable ? "YES" : "NO");
-}
-
-void periodicUpdates() {
-  static unsigned long lastSimUpdate = 0;
-  const unsigned long SIM_UPDATE_INTERVAL = 5000;  // 5 секунд
-  
-  // Обновляем SIM модуль раз в 5 секунд
-  if (millis() - lastSimUpdate > SIM_UPDATE_INTERVAL) {
-    simModule.update();
-    lastSimUpdate = millis();
-  }
 }
 
 void drawBatteryBarMinimal() {
